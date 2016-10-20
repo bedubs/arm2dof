@@ -1,5 +1,5 @@
 import numpy as np
-from pygame import mouse, locals, camera
+from pygame import mouse, locals, camera, surface
 import pygame, math
 import sys
 
@@ -11,10 +11,15 @@ arm_color = (50, 50, 50, 200)  # fourth value specifies transparency
 
 pygame.init()
 
-width = 800
-height = 800
+camera.init()
+
+width = 640
+height = 480
+size = (width, height)
+cam = camera.Camera('/dev/video0', (width, height))
+cam.start()
 display = pygame.display.set_mode((width, height))
-pygame.display.set_caption("2 DOF Robot Arm")
+
 fpsClock = pygame.time.Clock()
 
 l1 = ArmSegment(150.)
@@ -49,7 +54,7 @@ def get_angles(point):
     angle_a = np.arccos((b**2 + c**2 - a**2) / (2*b*c))
     angle1 = angle_d - angle_a
     angle2 = np.arcsin((np.sin(angle_a) * c)/a)
-    return angle1, angle2 + angle1
+    return angle1, angle2 - angle1
 
 
 def get_angles1(point):
@@ -91,7 +96,12 @@ def get_angles3(point):
 
 
 def update_frame():
-    display.fill(white)
+    # display.fill(white)
+    # cam.get_image(display)
+
+    thresholded = pygame.surface.Surface(size, 0, display)
+    snapshot = cam.get_image(display)
+    pygame.transform.threshold(thresholded, cam.get_image(display), (0, 255, 0), (90, 170, 170), (0, 0, 0), 2)
 
     # generate (x,y) positions of each of the joints
     joints_x = np.cumsum([0,
@@ -132,58 +142,43 @@ def update_frame():
 
 while 1:
 
-    l1.rotation = 0
-    l2.rotation = 0
-    print 'Robot ready for mission.'
+    update_frame()
 
-    reset = False
-    while not reset:
-        update_frame()
-        for event in pygame.event.get():
-            if event.type == locals.QUIT:
-                print 'ALL YOUR BASE ARE BELONG TO US.'
-                pygame.quit()
-                sys.exit()
-            if event.type == locals.KEYDOWN:
-                if pygame.key.get_pressed()[32]:
-                    print 'Resetting Arm.'
-                    reset = True
-                    break
-            if event.type == locals.MOUSEBUTTONUP:
-                target = normalize_points(mouse.get_pos())
-                print target
-                angle_l1, angle_l2 = get_angles(target)
+    for event in pygame.event.get():
+        if event.type == locals.QUIT:
+            cam.stop()
+            pygame.quit()
+            sys.exit()
+        if event.type == locals.MOUSEBUTTONUP:
+            target = normalize_points(mouse.get_pos())
+            print target
+            angle_l1, angle_l2 = get_angles(target)
 
-                print ''
-                print 'CHANGE >>\nAngle 1: {: f}\nAngle 2: {: f}\n'.format(np.degrees(angle_l1), np.degrees(angle_l2))
+            l1_arm, l1_rect = l1.rotate(angle_l1)
+            l2_arm, l2_rect = l2.rotate(angle_l2)
 
-                l1_arm, l1_rect = l1.rotate(angle_l1)
-                l2_arm, l2_rect = l2.rotate(angle_l2)
+            # rotate_l1, rotate_l2 = True, True
+            # while rotate_l1 or rotate_l2:  # l1.rotation < angle_l1 and l2.rotation < angle_l2:
+            #
+            #     # rotate our joints
+            #     if math.fabs(l1.rotation) <= math.fabs(angle_l1):
+            #         l1_arm, l1_rect = l1.rotate(.01)
+            #     # if angle_l1 > 0:
+            #     #         l1.rotate(angle_l1)  # (.03*1)
+            #     #     else:
+            #     #         l1.rotate(angle_l1)
+            #     else:
+            #         rotate_l1 = False
+            #
+            #     if math.fabs(l2.rotation) <= math.fabs(angle_l2) + math.fabs(angle_l1):
+            #         l2_arm, l2_rect = l2.rotate(.01 * -2)
+            #         # if angle_l2 > 0:
+            #         #     l2.rotate(angle_l1 + angle_l2)
+            #         # else:
+            #         #     l2.rotate(angle_l1 + angle_l2)
+            #     else:
+            #         rotate_l2 = False
+            #    update_frame()
 
-                print 'CURRENT >>\nAngle 1: {: f}\nAngle 2: {: f}\n'.format(np.degrees(l1.rotation), np.degrees(l2.rotation))
-
-                # rotate_l1, rotate_l2 = True, True
-                # while rotate_l1 or rotate_l2:  # l1.rotation < angle_l1 and l2.rotation < angle_l2:
-                #
-                #     # rotate our joints
-                #     if math.fabs(l1.rotation) <= math.fabs(angle_l1):
-                #         l1_arm, l1_rect = l1.rotate(.01)
-                #     # if angle_l1 > 0:
-                #     #         l1.rotate(angle_l1)  # (.03*1)
-                #     #     else:
-                #     #         l1.rotate(angle_l1)
-                #     else:
-                #         rotate_l1 = False
-                #
-                #     if math.fabs(l2.rotation) <= math.fabs(angle_l2) + math.fabs(angle_l1):
-                #         l2_arm, l2_rect = l2.rotate(.01 * -2)
-                #         # if angle_l2 > 0:
-                #         #     l2.rotate(angle_l1 + angle_l2)
-                #         # else:
-                #         #     l2.rotate(angle_l1 + angle_l2)
-                #     else:
-                #         rotate_l2 = False
-                #    update_frame()
-
-                update_frame()
-                pygame.event.clear()
+            update_frame()
+            pygame.event.clear()

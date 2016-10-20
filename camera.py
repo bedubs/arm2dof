@@ -9,7 +9,8 @@ from pygame.locals import *
 
 class VideoCapturePlayer(object):
 
-    size = ( 800, 800 )
+    size = (640, 480)
+
     def __init__(self, **argd):
         self.__dict__.update(**argd)
         super(VideoCapturePlayer, self).__init__(**argd)
