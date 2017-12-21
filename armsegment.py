@@ -19,7 +19,8 @@ class ArmSegment:
         """
         Rotates and re-centers the arm segment.
         """
-        self.rotation += rotation
+        difference = rotation - self.rotation
+        self.rotation = self.rotation + difference
         # rotate arms by degree
         arm = pygame.transform.rotozoom(self.arm, np.degrees(self.rotation), 1)
         # # reset the center

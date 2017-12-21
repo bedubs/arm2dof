@@ -17,13 +17,15 @@ display = pygame.display.set_mode((width, height))
 pygame.display.set_caption("2 DOF Robot Arm")
 fpsClock = pygame.time.Clock()
 
-l1 = ArmSegment(300.)
-l2 = ArmSegment(150.)
+l2 = ArmSegment(300.)
+l1 = ArmSegment(150.)
 
 l1.arm.fill(arm_color)
 l2.arm.fill(arm_color)
 
 origin = (width / 2, height / 2)
+
+follow_mode = False
 
 
 def transform(rect, base, arm_segment):
@@ -50,7 +52,6 @@ def fix(arg):
 def get_angles(point):
     A, Z = point
     angle_d = np.arctan2(Z, A)
-    print(np.degrees(angle_d))
     top = (l1.length**2 + A**2 + Z**2 - l2.length**2)
     bottom = 2*l1.length * math.sqrt(A**2 + Z**2)
     first_arm = top/bottom
@@ -58,12 +59,8 @@ def get_angles(point):
     second_arm = (l1.length**2 + l2.length**2 - A**2 - Z**2)/(2 * l1.length * l2.length)
     second_arm = fix(second_arm)
     angle_1, angle_2 = np.arccos([first_arm, second_arm])
-    print(np.degrees(angle_1))
-    print(np.degrees(angle_2))
     angle_1 = angle_1 + angle_d
     angle_2 = (angle_2 + angle_1) - math.pi
-    print(np.degrees(angle_1))
-    print(np.degrees(angle_2))
     return angle_1, angle_2
 
 
@@ -116,6 +113,14 @@ while 1:
     reset = False
     while not reset:
         update_frame()
+
+        if follow_mode:
+            ## This will make the arm follow the mouse always
+            target = normalize_points(mouse.get_pos())
+            angle_l1, angle_l2 = get_angles(target)
+            l1_arm, l1_rect = l1.rotate(angle_l1)
+            l2_arm, l2_rect = l2.rotate(angle_l2)
+
         for event in pygame.event.get():
             if event.type == locals.QUIT:
                 print('ALL YOUR BASE ARE BELONG TO US.')
@@ -125,7 +130,14 @@ while 1:
                 if pygame.key.get_pressed()[32]: # if spacebar is pressed
                     print('Resetting Arm.')
                     reset = True
+                    follow_mode = False
                     break
+            if event.type == locals.MOUSEBUTTONDOWN:
+                if mouse.get_pressed()[2]:
+                    if follow_mode:
+                        follow_mode = False
+                    else:
+                        follow_mode = True
             if event.type == locals.MOUSEBUTTONUP:
                 target = normalize_points(mouse.get_pos())
                 print(target)
@@ -138,29 +150,6 @@ while 1:
                 l2_arm, l2_rect = l2.rotate(angle_l2)
 
                 print('CURRENT >>\nAngle 1: {: f}\nAngle 2: {: f}\n'.format(np.degrees(l1.rotation), np.degrees(l2.rotation)))
-
-                # rotate_l1, rotate_l2 = True, True
-                # while rotate_l1 or rotate_l2:  # l1.rotation < angle_l1 and l2.rotation < angle_l2:
-                #
-                #     # rotate our joints
-                #     if math.fabs(l1.rotation) <= math.fabs(angle_l1):
-                #         l1_arm, l1_rect = l1.rotate(.01)
-                #     # if angle_l1 > 0:
-                #     #         l1.rotate(angle_l1)  # (.03*1)
-                #     #     else:
-                #     #         l1.rotate(angle_l1)
-                #     else:
-                #         rotate_l1 = False
-                #
-                #     if math.fabs(l2.rotation) <= math.fabs(angle_l2) + math.fabs(angle_l1):
-                #         l2_arm, l2_rect = l2.rotate(.01 * -2)
-                #         # if angle_l2 > 0:
-                #         #     l2.rotate(angle_l1 + angle_l2)
-                #         # else:
-                #         #     l2.rotate(angle_l1 + angle_l2)
-                #     else:
-                #         rotate_l2 = False
-                #    update_frame()
 
                 update_frame()
                 pygame.event.clear()
