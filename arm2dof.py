@@ -9,16 +9,21 @@ black = (0, 0, 0)
 white = (255, 255, 255)
 arm_color = (50, 50, 50, 200)  # fourth value specifies transparency
 
+# pygame.font.init()
+coordinates = (0, 0)
+angle_l1, angle_l2 = (0, 0)
+
 pygame.init()
 
+info = pygame.font.SysFont('Arial', 24)
 width = 800
 height = 800
 display = pygame.display.set_mode((width, height))
 pygame.display.set_caption("2 DOF Robot Arm")
 fpsClock = pygame.time.Clock()
 
-l2 = ArmSegment(300.)
-l1 = ArmSegment(150.)
+l2 = ArmSegment(200.)
+l1 = ArmSegment(200.)
 
 l1.arm.fill(arm_color)
 l2.arm.fill(arm_color)
@@ -77,7 +82,7 @@ def update_frame():
                           l2.scale * np.sin(l2.rotation)]) * -1 + origin[1]
 
     joints = [(int(x), int(y)) for x, y in zip(joints_x, joints_y)]
-    
+    print(joints)
     # rotate arm lines
     line_l1 = pygame.transform.rotozoom(l1.arm,
                                         np.degrees(l1.rotation), 1)
@@ -93,6 +98,11 @@ def update_frame():
 
     display.blit(line_l1, l1_rect)
     display.blit(line_l2, l2_rect)
+
+    angle_1_text = info.render(f'{int(np.degrees(angle_l1))} degrees', False, (0, 0, 0))
+    angle_2_text = info.render(f'{int(np.degrees(angle_l2))} degrees', False, (0, 0, 0))
+    display.blit(angle_1_text, joints[0])
+    display.blit(angle_2_text, joints[1])
 
     # draw circles at joints for pretty
     pygame.draw.circle(display, black, joints[0], 10)
@@ -130,6 +140,7 @@ while 1:
                 if pygame.key.get_pressed()[32]: # if spacebar is pressed
                     print('Resetting Arm.')
                     reset = True
+                    angle_l1, angle_l2 = (0, 0)
                     follow_mode = False
                     break
             if event.type == locals.MOUSEBUTTONDOWN:
@@ -139,9 +150,11 @@ while 1:
                     else:
                         follow_mode = True
             if event.type == locals.MOUSEBUTTONUP:
-                target = normalize_points(mouse.get_pos())
+                coordinates = mouse.get_pos()
+                target = normalize_points(coordinates)
                 print(target)
                 angle_l1, angle_l2 = get_angles(target)
+                angle_info = f'Angle 1: {np.degrees(angle_l1)}\nAngle 2: {np.degrees(angle_l2)}'
 
                 print('')
                 print('CHANGE >>\nAngle 1: {: f}\nAngle 2: {: f}\n'.format(np.degrees(angle_l1), np.degrees(angle_l2)))
